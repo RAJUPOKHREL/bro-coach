@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bro - AI Life Coach</title>
+  
+  <!-- Mobile & PWA Web App Capabilities -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="description" content="Your self-learning, voice-enabled personal life coach with real timers, alarms, and growth tracking.">
+
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            },
+            dark: {
+              bg: '#0b0f19',
+              card: '#131b2e',
+              surface: '#1c2640',
+              border: '#243252',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #243252; border-radius: 4px; }
+
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(0.98); }
+    }
+    .pulse-mic { animation: pulse-soft 1.5s infinite ease-in-out; }
+    
+    .glass-card {
+      background: rgba(19, 27, 46, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(36, 50, 82, 0.8);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-hidden antialiased select-none">
+
+  <header class="w-full bg-dark-card/90 backdrop-blur-md border-b border-dark-border px-4 py-3 flex flex-col gap-2 z-20 sticky top-0 pt-safe">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 font-black text-white text-xl shadow-lg shadow-blue-500/20">
+          B
+          <span id="speaking-dot" class="hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-dark-bg rounded-full animate-ping"></span>
+        </div>
+        <div>
+          <h1 class="font-bold text-base tracking-tight flex items-center gap-1.5">
+            BRO <span id="level-badge" class="text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">LVL 1</span>
+          </h1>
+          <p id="status-text" class="text-xs text-gray-400">Ready • Local Storage Active</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-1.5">
+        <button onclick="openTab('alarms')" title="Alarms & Timers" class="p-2 rounded-xl bg-dark-surface hover:bg-gray-800 text-amber-400 border border-dark-border">
+          <i data-lucide="timer" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="toggleDeployModal()" title="GitHub Pages Guide" class="p-2 rounded-xl bg-dark-surface hover:bg-gray-800 text-gray-300 border border-dark-border">
+          <i data-lucide="github" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="toggleSettingsModal()" title="Settings" class="p-2 rounded-xl bg-dark-surface hover:bg-gray-800 text-gray-300 border border-dark-border">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- XP Progress Bar Header Component -->
+    <div class="w-full bg-dark-bg rounded-full h-2.5 overflow-hidden border border-dark-border flex items-center p-0.5">
+      <div id="xp-bar-fill" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+    </div>
+    <div class="flex justify-between items-center text-[10px] font-mono text-gray-400 px-0.5">
+      <span>XP Progress</span>
+      <span id="xp-text">0 / 100 XP</span>
+    </div>
+  </header>
+
+  <main class="flex-1 relative overflow-hidden flex flex-col max-w-2xl w-full mx-auto">
+    
+    <!-- Onboarding Flow Modal Overlay -->
+    <div id="onboarding-screen" class="absolute inset-0 bg-dark-bg/95 backdrop-blur-md z-30 flex flex-col p-5 overflow-y-auto">
+      <div class="my-auto max-w-md mx-auto w-full space-y-5">
+        <div class="text-center space-y-2">
+          <div class="w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20">
+            <i data-lucide="sparkles" class="w-7 h-7"></i>
+          </div>
+          <h2 class="text-2xl font-black text-white">Daily Reality Check-In</h2>
+          <p class="text-xs text-gray-400">Answer these 4 direct questions. Bro will learn your patterns, set actionable timers, and guide your growth.</p>
+        </div>
+
+        <div class="space-y-3.5 text-left">
+          <div>
+            <label class="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">1. What are you currently doing right now?</label>
+            <textarea id="q1" rows="2" placeholder="Working on a project, scrolling on social media, studying..." class="w-full bg-dark-card border border-dark-border rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">2. Where are the difficulties or things pulling you down?</label>
+            <textarea id="q2" rows="2" placeholder="Procrastination, feeling overwhelmed, doubt, brain fog..." class="w-full bg-dark-card border border-dark-border rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">3. Are you really present and focused on what you do?</label>
+            <select id="q3" class="w-full bg-dark-card border border-dark-border rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 text-white">
+              <option value="Yes, completely locked in.">Yes, completely locked in.</option>
+              <option value="Somewhat, but my mind is wandering.">Somewhat, but my mind is wandering.</option>
+              <option value="No, total distraction and brain fog.">No, total distraction and brain fog.</option>
+              <option value="I'm actively avoiding what I should do.">I'm actively avoiding what I should do.</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">4. How are you managing your energy and mindset through this?</label>
+            <textarea id="q4" rows="2" placeholder="Drinking caffeine, pushing through blindly, feeling burned out..." class="w-full bg-dark-card border border-dark-border rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"></textarea>
+          </div>
+        </div>
+
+        <button onclick="submitOnboarding()" class="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:opacity-90 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition">
+          <span>Start Session (+25 XP)</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 1: COACH CHAT PANEL -->
+    <div id="tab-chat" class="tab-panel flex-1 flex flex-col overflow-hidden">
+      <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 pb-20"></div>
+    </div>
+
+    <!-- TAB 2: ACTION PLANNER & HUB -->
+    <div id="tab-actions" class="tab-panel hidden flex-1 overflow-y-auto p-4 space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="font-bold text-lg text-white">Actionable Plan</h2>
+          <p class="text-xs text-gray-400">Convert Bro's advice into completed micro-wins.</p>
+        </div>
+        <button onclick="showAddTaskModal()" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Action
+        </button>
+      </div>
+
+      <div id="action-list" class="space-y-2">
+        <!-- Action Items render dynamically -->
+      </div>
+    </div>
+
+    <!-- TAB 3: TIMERS & ALARMS -->
+    <div id="tab-alarms" class="tab-panel hidden flex-1 overflow-y-auto p-4 space-y-5">
+      <div class="glass-card rounded-2xl p-5 text-center space-y-4">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold uppercase tracking-wider text-blue-400">Focus & Reset Timer</span>
+          <span id="timer-status" class="text-[10px] font-mono text-gray-400 uppercase">Idle</span>
+        </div>
+
+        <div id="timer-display" class="font-mono text-5xl font-black tracking-widest text-white my-2">
+          25:00
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="setTimerPreset(5)" class="py-2 bg-dark-surface border border-dark-border rounded-xl text-xs font-semibold text-gray-300 hover:text-white">5m Reset</button>
+          <button onclick="setTimerPreset(25)" class="py-2 bg-dark-surface border border-dark-border rounded-xl text-xs font-semibold text-blue-400 hover:text-white">25m Focus</button>
+          <button onclick="setTimerPreset(45)" class="py-2 bg-dark-surface border border-dark-border rounded-xl text-xs font-semibold text-indigo-400 hover:text-white">45m Deep</button>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button id="timer-toggle-btn" onclick="toggleTimer()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2">
+            <i data-lucide="play" class="w-4 h-4"></i> Start Timer
+          </button>
+          <button onclick="resetTimer()" class="px-4 py-3 bg-dark-surface border border-dark-border text-gray-400 rounded-xl hover:text-white">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real Device Alarm Trigger -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="font-bold text-sm text-white">Daily Focus Alarm</h3>
+            <p class="text-xs text-gray-400">Set a target wake-up or check-in alert chime.</p>
+          </div>
+          <i data-lucide="bell" class="w-5 h-5 text-amber-400"></i>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <input type="time" id="alarm-time" class="bg-dark-surface border border-dark-border text-white text-lg font-mono rounded-xl p-3 flex-1 focus:outline-none focus:border-blue-500">
+          <button id="alarm-toggle-btn" onclick="toggleAlarm()" class="px-5 py-3.5 bg-amber-500 hover:bg-amber-400 text-dark-bg font-black rounded-xl text-xs uppercase tracking-wider">
+            Set Alarm
+          </button>
+        </div>
+        <p id="alarm-info" class="text-[11px] text-gray-400 font-mono">Alarm Status: Disabled</p>
+      </div>
+    </div>
+
+    <!-- TAB 4: GROWTH & SELF-LEARNING MATRIX -->
+    <div id="tab-growth" class="tab-panel hidden flex-1 overflow-y-auto p-4 space-y-4">
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <div class="flex items-center gap-2 text-indigo-400">
+          <i data-lucide="brain" class="w-5 h-5"></i>
+          <h3 class="font-bold text-white text-base">Self-Learning Memory Matrix</h3>
+        </div>
+        <p class="text-xs text-gray-400">Bro analyzes your check-in patterns, recurring difficulties, and focus ratings to personalize coaching.</p>
+
+        <div class="grid grid-cols-2 gap-2 text-center pt-1">
+          <div class="bg-dark-bg p-3 rounded-xl border border-dark-border">
+            <span class="text-gray-400 text-[10px] block uppercase font-mono">Sessions Completed</span>
+            <span id="stat-sessions" class="text-2xl font-mono font-bold text-blue-400">0</span>
+          </div>
+          <div class="bg-dark-bg p-3 rounded-xl border border-dark-border">
+            <span class="text-gray-400 text-[10px] block uppercase font-mono">Actions Finished</span>
+            <span id="stat-actions" class="text-2xl font-mono font-bold text-emerald-400">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <h4 class="font-bold text-xs text-gray-200 uppercase tracking-wider">Identified Pull-Downs & Obstacles</h4>
+        <div id="memory-obstacles-list" class="space-y-2 text-xs">
+          <div class="text-gray-500 italic">No patterns recorded yet. Complete check-ins to build memory.</div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 space-y-3">
+        <h4 class="font-bold text-xs text-gray-200 uppercase tracking-wider">Learned Strategies & Wins</h4>
+        <div id="memory-strategies-list" class="space-y-2 text-xs">
+          <div class="text-gray-500 italic">No wins recorded yet.</div>
+        </div>
+        <button onclick="resetLearningMemory()" class="w-full py-2 mt-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl hover:bg-red-500/20 transition">
+          Reset Self-Learning Database
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM TAB NAVIGATION BAR -->
+  <footer class="w-full bg-dark-card/95 backdrop-blur-md border-t border-dark-border p-2 z-20 pb-safe">
+    <nav class="max-w-2xl mx-auto flex justify-around items-center">
+      <button onclick="openTab('chat')" id="nav-chat" class="nav-btn flex flex-col items-center py-1 px-3 text-blue-400 font-medium text-[10px] space-y-1">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+        <span>Chat</span>
+      </button>
+
+      <button onclick="openTab('actions')" id="nav-actions" class="nav-btn flex flex-col items-center py-1 px-3 text-gray-400 font-medium text-[10px] space-y-1">
+        <i data-lucide="check-square" class="w-5 h-5"></i>
+        <span>Actions</span>
+      </button>
+
+      <button onclick="openTab('alarms')" id="nav-alarms" class="nav-btn flex flex-col items-center py-1 px-3 text-gray-400 font-medium text-[10px] space-y-1">
+        <i data-lucide="alarm-clock" class="w-5 h-5"></i>
+        <span>Timers</span>
+      </button>
+
+      <button onclick="openTab('growth')" id="nav-growth" class="nav-btn flex flex-col items-center py-1 px-3 text-gray-400 font-medium text-[10px] space-y-1">
+        <i data-lucide="trending-up" class="w-5 h-5"></i>
+        <span>Growth</span>
+      </button>
+    </nav>
+
+    <!-- Chat Input Controls (Only Visible on Chat Tab) -->
+    <div id="chat-controls" class="max-w-2xl mx-auto flex items-center space-x-2 pt-2 border-t border-dark-border/50">
+      <button id="wake-lock-btn" onclick="toggleWakeLock()" title="Keep Phone Screen Awake" class="p-3 rounded-xl bg-dark-surface text-gray-400 hover:text-white transition border border-dark-border">
+        <i data-lucide="sun" class="w-5 h-5"></i>
+      </button>
+
+      <button id="mic-btn" onclick="toggleMic()" title="Talk to Bro" class="p-3 rounded-xl bg-dark-surface text-gray-400 hover:text-blue-400 transition border border-dark-border">
+        <i data-lucide="mic" class="w-5 h-5"></i>
+      </button>
+
+      <input type="text" id="user-input" placeholder="Talk to Bro..." onkeypress="handleKeyPress(event)" class="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500">
+
+      <button onclick="sendMessage()" class="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition font-medium">
+        <i data-lucide="send" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </footer>
+
+  <!-- GitHub Pages Guide Modal -->
+  <div id="deploy-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-card border border-dark-border rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-dark-border flex justify-between items-center bg-dark-bg">
+        <div class="flex items-center gap-2">
+          <i data-lucide="github" class="w-5 h-5 text-gray-200"></i>
+          <h3 class="font-bold text-white text-base">Host on GitHub Pages (Free)</h3>
+        </div>
+        <button onclick="toggleDeployModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="p-4 overflow-y-auto space-y-3 text-xs text-gray-300">
+        <p>Host Bro privately for <strong>100% free</strong> and install it on your mobile device:</p>
+        <ol class="list-decimal list-inside space-y-2 text-gray-400 font-mono">
+          <li>Create a repository on <span class="text-blue-400">GitHub.com</span> (e.g. <code class="bg-dark-bg px-1 py-0.5 rounded">my-bro-coach</code>).</li>
+          <li>Upload this file as <code class="bg-dark-bg px-1 py-0.5 rounded">index.html</code>.</li>
+          <li>Go to <strong>Settings &gt; Pages</strong> in your GitHub repo.</li>
+          <li>Select <strong>main branch / root</strong> and click Save.</li>
+          <li>Open the site URL on your iPhone or Android browser.</li>
+          <li>Tap <strong>Share / Menu &gt; Add to Home Screen</strong>.</li>
+        </ol>
+        <div class="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-300 text-[11px]">
+          🔒 <strong>100% Private:</strong> All your check-ins, timers, alarms, and self-learning history are saved strictly inside your phone's browser local storage.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4 hidden">
+    <div class="bg-dark-card border border-dark-border rounded-2xl max-w-md w-full p-4 space-y-4">
+      <div class="flex justify-between items-center border-b border-dark-border pb-3">
+        <h3 class="font-bold text-white text-base">Settings & Speech Config</h3>
+        <button onclick="toggleSettingsModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Voice Speech Rate</label>
+          <input type="range" id="voice-rate" min="0.7" max="1.3" step="0.1" value="1.0" class="w-full">
+        </div>
+
+        <div class="pt-2 flex justify-between">
+          <button onclick="triggerReOnboarding()" class="px-3 py-2 bg-dark-surface border border-dark-border text-blue-400 rounded-xl font-bold">New Check-In</button>
+          <button onclick="saveSettings()" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global Application State
+    let state = {
+      xp: 0,
+      level: 1,
+      messages: [],
+      actions: [],
+      memory: {
+        checkins: 0,
+        actionsCompleted: 0,
+        obstacles: [],
+        strategies: [],
+        lastCheckin: null
+      },
+      settings: {
+        voiceRate: 1.0
+      },
+      timer: {
+        duration: 1500, // 25 mins
+        timeLeft: 1500,
+        isRunning: false,
+        interval: null
+      },
+      alarm: {
+        time: null,
+        enabled: false,
+        interval: null
+      },
+      isRecording: false,
+      wakeLock: null
+    };
+
+    let recognition = null;
+    let audioCtx = null;
+
+    // Initialize application on load
+    window.onload = function() {
+      lucide.createIcons();
+      loadState();
+      initSpeechRecognition();
+
+      if (state.messages.length === 0) {
+        document.getElementById('onboarding-screen').classList.remove('hidden');
+      } else {
+        document.getElementById('onboarding-screen').classList.add('hidden');
+        renderMessages();
+      }
+
+      renderActions();
+      updateProgressUI();
+      updateMemoryUI();
+      checkAlarmLoop();
+    };
+
+    // Tab Switching Function
+    function openTab(tabName) {
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.replace('text-blue-400', 'text-gray-400'));
+
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      document.getElementById(`nav-${tabName}`).classList.replace('text-gray-400', 'text-blue-400');
+
+      const chatControls = document.getElementById('chat-controls');
+      if (tabName === 'chat') {
+        chatControls.classList.remove('hidden');
+      } else {
+        chatControls.classList.add('hidden');
+      }
+    }
+
+    // Local Storage Management
+    function loadState() {
+      const saved = localStorage.getItem('bro_pwa_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          state.xp = parsed.xp || 0;
+          state.level = parsed.level || 1;
+          state.messages = parsed.messages || [];
+          state.actions = parsed.actions || [];
+          state.memory = parsed.memory || state.memory;
+          state.settings = parsed.settings || state.settings;
+        } catch(e) {
+          console.error("Failed to parse state", e);
+        }
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem('bro_pwa_data', JSON.stringify({
+        xp: state.xp,
+        level: state.level,
+        messages: state.messages,
+        actions: state.actions,
+        memory: state.memory,
+        settings: state.settings
+      }));
+      updateProgressUI();
+      updateMemoryUI();
+    }
+
+    // XP & Level Growth Engine
+    function addXP(amount) {
+      state.xp += amount;
+      const nextLevelXP = state.level * 100;
+      if (state.xp >= nextLevelXP) {
+        state.xp -= nextLevelXP;
+        state.level += 1;
+        playChimeSound(600, 0.4);
+        alert(`🎉 LEVEL UP! You reached Level ${state.level}! Keep pushing forward, bro!`);
+      }
+      saveState();
+    }
+
+    function updateProgressUI() {
+      const nextLevelXP = state.level * 100;
+      const pct = Math.min(100, Math.round((state.xp / nextLevelXP) * 100));
+      document.getElementById('xp-bar-fill').style.width = `${pct}%`;
+      document.getElementById('xp-text').innerText = `${state.xp} / ${nextLevelXP} XP`;
+      document.getElementById('level-badge').innerText = `LVL ${state.level}`;
+      document.getElementById('stat-sessions').innerText = state.memory.checkins;
+      document.getElementById('stat-actions').innerText = state.memory.actionsCompleted;
+    }
+
+    // Onboarding Submission
+    function submitOnboarding() {
+      const q1 = document.getElementById('q1').value.trim() || 'Working on general goals';
+      const q2 = document.getElementById('q2').value.trim() || 'Distractions and fatigue';
+      const q3 = document.getElementById('q3').value;
+      const q4 = document.getElementById('q4').value.trim() || 'Trying to maintain momentum';
+
+      document.getElementById('onboarding-screen').classList.add('hidden');
+
+      state.memory.checkins += 1;
+      state.memory.lastCheckin = { q1, q2, q3, q4, time: new Date().toISOString() };
+      
+      if (!state.memory.obstacles.includes(q2)) {
+        state.memory.obstacles.push(q2);
+      }
+
+      // Add default recommended action
+      state.actions.push({
+        id: Date.now(),
+        title: `Overcome: ${q2.substring(0, 30)}...`,
+        completed: false,
+        xp: 20
+      });
+
+      const summaryPrompt = `Daily Check-In:\n- Doing: ${q1}\n- Pulling Down: ${q2}\n- Presence: ${q3}\n- Mindset: ${q4}`;
+      state.messages.push({ role: 'user', content: summaryPrompt });
+
+      const reply = generateBroCoaching(q1, q2, q3, q4);
+      state.messages.push({ role: 'assistant', content: reply });
+
+      addXP(25); // Award XP for check-in
+      saveState();
+      renderMessages();
+      renderActions();
+      speakText(reply);
+    }
+
+    function generateBroCoaching(doing, struggle, presence, mindset) {
+      let reply = `Alright bro, let's break down where you're at right now:\n\n`;
+
+      if (presence.includes('No') || presence.includes('avoiding')) {
+        reply += `You're supposed to be focusing on **"${doing}"**, but you're getting pulled off track by **"${struggle}"**.\n\n`;
+        reply += `💡 **Bro's Call to Action:** Stop overthinking. Go to the Timers tab, hit the **5m Reset**, put your phone down, and just do ONE tiny step.`;
+      } else if (presence.includes('Somewhat')) {
+        reply += `You're half-in on **"${doing}"**, managing through *"${mindset}"*, but **"${struggle}"** is eating your focus.\n\n`;
+        reply += `Let's dial it in. What is the single most urgent priority you need to complete right now?`;
+      } else {
+        reply += `You're locked into **"${doing}"**—awesome work! Don't let **"${struggle}"** creep up on you.\n\n`;
+        reply += `Set a **25m Focus Timer** in the Timers tab and let's rack up another win!`;
+      }
+
+      if (state.memory.checkins > 1) {
+        reply += `\n\n*(Bro Growth Note: Session #${state.memory.checkins}. You are actively building momentum!)*`;
+      }
+
+      return reply;
+    }
+
+    // Chat Logic
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('user-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      state.messages.push({ role: 'user', content: text });
+      renderMessages();
+
+      setTimeout(() => {
+        let response = "";
+        const lower = text.toLowerCase();
+
+        if (lower.includes("timer") || lower.includes("alarm") || lower.includes("clock")) {
+          response = "I've got built-in timers and alarms ready for you! Switch over to the **Timers** tab at the bottom to launch a focus sprint.";
+        } else if (lower.includes("done") || lower.includes("finished") || lower.includes("did it")) {
+          response = "BOOM! 💪 Big win! Racking up that progress. Head to the Actions tab or keep pushing!";
+          addXP(15);
+          if (!state.memory.strategies.includes(text)) {
+            state.memory.strategies.push(text);
+          }
+        } else {
+          response = `Got it. You said: "${text}". What's the immediate 2-minute action item we can create from this?`;
+        }
+
+        state.messages.push({ role: 'assistant', content: response });
+        saveState();
+        renderMessages();
+        speakText(response);
+      }, 500);
+    }
+
+    function renderMessages() {
+      const box = document.getElementById('chat-box');
+      box.innerHTML = '';
+
+      state.messages.forEach(msg => {
+        const isUser = msg.role === 'user';
+        const div = document.createElement('div');
+        div.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+        div.innerHTML = `
+          <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+            isUser 
+              ? 'bg-blue-600 text-white rounded-br-none' 
+              : 'bg-dark-card border border-dark-border text-gray-200 rounded-bl-none shadow-md'
+          }">
+            <p class="whitespace-pre-wrap">${msg.content}</p>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Action Planner Functions
+    function renderActions() {
+      const list = document.getElementById('action-list');
+      if (state.actions.length === 0) {
+        list.innerHTML = `<div class="text-xs text-gray-500 italic text-center py-6">No action items yet. Click "+ Add Action" to set targets!</div>`;
+        return;
+      }
+
+      list.innerHTML = state.actions.map(act => `
+        <div class="glass-card rounded-xl p-3 flex items-center justify-between gap-3">
+          <button onclick="toggleActionComplete(${act.id})" class="flex items-center gap-3 text-left flex-1">
+            <div class="w-5 h-5 rounded-md border ${act.completed ? 'bg-emerald-500 border-emerald-500 text-dark-bg' : 'border-gray-500'} flex items-center justify-center">
+              ${act.completed ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
+            </div>
+            <span class="text-xs ${act.completed ? 'line-through text-gray-500' : 'text-gray-200 font-medium'}">${act.title}</span>
+          </button>
+          <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">+${act.xp} XP</span>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function showAddTaskModal() {
+      const title = prompt("Enter actionable micro-task:");
+      if (title && title.trim()) {
+        state.actions.push({
+          id: Date.now(),
+          title: title.trim(),
+          completed: false,
+          xp: 15
+        });
+        saveState();
+        renderActions();
+      }
+    }
+
+    function toggleActionComplete(id) {
+      const act = state.actions.find(a => a.id === id);
+      if (act) {
+        act.completed = !act.completed;
+        if (act.completed) {
+          addXP(act.xp);
+          state.memory.actionsCompleted += 1;
+          playChimeSound(800, 0.2);
+        }
+        saveState();
+        renderActions();
+      }
+    }
+
+    // Timers & Audio Synthesizer
+    function setTimerPreset(mins) {
+      state.timer.duration = mins * 60;
+      state.timer.timeLeft = mins * 60;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(state.timer.timeLeft / 60).toString().padStart(2, '0');
+      const s = (state.timer.timeLeft % 60).toString().padStart(2, '0');
+      document.getElementById('timer-display').innerText = `${m}:${s}`;
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById('timer-toggle-btn');
+      if (state.timer.isRunning) {
+        clearInterval(state.timer.interval);
+        state.timer.isRunning = false;
+        btn.innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Start Timer`;
+        document.getElementById('timer-status').innerText = 'Paused';
+      } else {
+        state.timer.isRunning = true;
+        btn.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i> Pause Timer`;
+        document.getElementById('timer-status').innerText = 'Running';
+
+        state.timer.interval = setInterval(() => {
+          if (state.timer.timeLeft > 0) {
+            state.timer.timeLeft -= 1;
+            updateTimerDisplay();
+          } else {
+            clearInterval(state.timer.interval);
+            state.timer.isRunning = false;
+            playChimeSound(900, 1.0);
+            alert("⏰ Timer Complete! Great job locking in focus!");
+            addXP(30);
+            resetTimer();
+          }
+        }, 1000);
+      }
+      lucide.createIcons();
+    }
+
+    function resetTimer() {
+      clearInterval(state.timer.interval);
+      state.timer.isRunning = false;
+      state.timer.timeLeft = state.timer.duration;
+      document.getElementById('timer-status').innerText = 'Idle';
+      document.getElementById('timer-toggle-btn').innerHTML = `<i data-lucide="play" class="w-4 h-4"></i> Start Timer`;
+      updateTimerDisplay();
+      lucide.createIcons();
+    }
+
+    // Native Device Alarm Check
+    function toggleAlarm() {
+      const val = document.getElementById('alarm-time').value;
+      const btn = document.getElementById('alarm-toggle-btn');
+      const info = document.getElementById('alarm-info');
+
+      if (!val) {
+        alert("Please set a valid alarm time first.");
+        return;
+      }
+
+      state.alarm.enabled = !state.alarm.enabled;
+      state.alarm.time = val;
+
+      if (state.alarm.enabled) {
+        btn.innerText = "Cancel";
+        btn.classList.replace('bg-amber-500', 'bg-red-500');
+        info.innerText = `Alarm Active for ${val}`;
+      } else {
+        btn.innerText = "Set Alarm";
+        btn.classList.replace('bg-red-500', 'bg-amber-500');
+        info.innerText = `Alarm Status: Disabled`;
+      }
+    }
+
+    function checkAlarmLoop() {
+      setInterval(() => {
+        if (state.alarm.enabled && state.alarm.time) {
+          const now = new Date();
+          const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+          if (currentTime === state.alarm.time && now.getSeconds() === 0) {
+            playChimeSound(880, 2.0);
+            alert(`⏰ ALARM ALERT! Time for your scheduled Bro Focus Check-In!`);
+          }
+        }
+      }, 1000);
+    }
+
+    // Audio Chime Synthesizer (No External Sound Files Required)
+    function playChimeSound(freq, duration) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) {
+        console.log("Audio play prevented", e);
+      }
+    }
+
+    // Voice Engine
+    function initSpeechRecognition() {
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.onresult = (e) => {
+          document.getElementById('user-input').value = e.results[0][0].transcript;
+          toggleMic();
+          sendMessage();
+        };
+        recognition.onerror = () => toggleMic();
+      }
+    }
+
+    function toggleMic() {
+      const btn = document.getElementById('mic-btn');
+      if (!recognition) return alert("Speech Recognition not supported on this browser.");
+
+      if (state.isRecording) {
+        recognition.stop();
+        state.isRecording = false;
+        btn.classList.remove('text-red-500', 'pulse-mic');
+      } else {
+        recognition.start();
+        state.isRecording = true;
+        btn.classList.add('text-red-500', 'pulse-mic');
+      }
+    }
+
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text.replace(/[*#]/g, ''));
+        utter.rate = state.settings.voiceRate || 1.0;
+        
+        const dot = document.getElementById('speaking-dot');
+        utter.onstart = () => dot.classList.remove('hidden');
+        utter.onend = () => dot.classList.add('hidden');
+
+        window.speechSynthesis.speak(utter);
+      }
+    }
+
+    // Screen Wake Lock Toggle
+    async function toggleWakeLock() {
+      const btn = document.getElementById('wake-lock-btn');
+      if ('wakeLock' in navigator) {
+        try {
+          if (state.wakeLock) {
+            await state.wakeLock.release();
+            state.wakeLock = null;
+            btn.classList.remove('text-amber-400');
+          } else {
+            state.wakeLock = await navigator.wakeLock.request('screen');
+            btn.classList.add('text-amber-400');
+          }
+        } catch(e) {
+          console.log("Wake Lock error", e);
+        }
+      }
+    }
+
+    // Growth UI Updates
+    function updateMemoryUI() {
+      const obs = document.getElementById('memory-obstacles-list');
+      if (state.memory.obstacles.length > 0) {
+        obs.innerHTML = state.memory.obstacles.map(o => `
+          <div class="bg-dark-bg p-2.5 rounded-lg border border-dark-border text-gray-300">
+            • ${o}
+          </div>
+        `).join('');
+      }
+
+      const str = document.getElementById('memory-strategies-list');
+      if (state.memory.strategies.length > 0) {
+        str.innerHTML = state.memory.strategies.map(s => `
+          <div class="bg-dark-bg p-2.5 rounded-lg border border-dark-border text-emerald-400">
+            ✓ ${s}
+          </div>
+        `).join('');
+      }
+    }
+
+    function resetLearningMemory() {
+      if (confirm("Reset Bro's self-learning matrix?")) {
+        state.memory = { checkins: 0, actionsCompleted: 0, obstacles: [], strategies: [], lastCheckin: null };
+        saveState();
+      }
+    }
+
+    function triggerReOnboarding() {
+      toggleSettingsModal();
+      document.getElementById('onboarding-screen').classList.remove('hidden');
+    }
+
+    function toggleDeployModal() {
+      document.getElementById('deploy-modal').classList.toggle('hidden');
+    }
+
+    function toggleSettingsModal() {
+      document.getElementById('settings-modal').classList.toggle('hidden');
+    }
+
+    function saveSettings() {
+      state.settings.voiceRate = parseFloat(document.getElementById('voice-rate').value);
+      saveState();
+      toggleSettingsModal();
+    }
+  </script>
+</body>
+</html>
